@@ -1,36 +1,27 @@
+﻿using Unity.Cinemachine;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class CameraRoom : MonoBehaviour
 {
-    [SerializeField] private GameObject cameraGO;
-    private Rigidbody player;
-    private bool playerDetected = false;
-
-    private void Update()
-    {
-        if(playerDetected)
-        {
-            player = GameObject.FindWithTag("Player").GetComponent<Rigidbody>();
-            player.rotation = Quaternion.LookRotation(cameraGO.transform.position - player.position);
-        }
-    }
+    [SerializeField] private CinemachineVirtualCameraBase roomCam;
 
     private void OnTriggerEnter(Collider other)
     {
-        if(other.CompareTag("Player"))
-        {
-            cameraGO.SetActive(true);
-            playerDetected = true;
-        }
-    }
+        var enteredPlayer = other.GetComponentInParent<PlayerRoomCamera>();
+        if (enteredPlayer == null) return;
 
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            cameraGO.SetActive(false);
-            playerDetected = false;
-        }
+        // ✅ só troca se for o player local desse cliente
+        if (!PlayerRoomCamera.TryGetLocal(out var localPlayer)) return;
+        if (enteredPlayer != localPlayer) return;
+
+        enteredPlayer.SwitchTo(roomCam);
+
+        var look = other.GetComponentInParent<LookAtRoomCamera>();
+        if (look != null)
+            look.SetRoomCameraPoint(roomCam.transform);
+
+        var move = other.GetComponentInParent<PlayerMovement>();
+        if (move != null)
+            move.currentRoomCamera = roomCam.transform;
     }
 }
